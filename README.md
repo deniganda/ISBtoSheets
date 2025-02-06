@@ -14,7 +14,7 @@ c. Data mudah untuk diolah/disusun kembali sesuai kebutuhan
 ## Persyaratan
 - [Akun Layanan Google](https://github.com/deniganda/ISBtoSheets/blob/main/Guide/Google%20Service%20Account.md) dengan Google Sheets API diaktifkan (file `credentials.json`).
 - [Google Sheets](https://github.com/deniganda/ISBtoSheets/blob/main/Guide/Google%20Sheets.md) (Anda memerlukan Spreadsheet ID untuk memasukkan data).
-- Link JSON dari ISB LKPP.
+- Link JSON dari akun [ISB LKPP](https://isb.lkpp.go.id/isb-2) instansi anda.
 
 ## Persiapan
 
@@ -49,8 +49,6 @@ Untuk menyimpan dan menggunakan informasi sensitif dengan aman, atur GitHub Secr
 #### **Secrets yang Diperlukan:**
 - `GOOGLE_SHEET_KEY_JSON`: Salin dan tempelkan isi file `credentials.json` Anda di sini.
 - `SPREADSHEET_ID`: ID Spreadsheet dari tautan Google Sheets.
-
-#### **Secrets Opsional untuk Kustomisasi:**
 - `API_URL_TS`: Tautan JSON dari SPSE-TenderSelesai.
 - `API_URL_TSN`: Tautan JSON dari SPSE-TenderSelesaiNilai.
 - `API_URL_TSP`: Tautan JSON dari SPSE-TenderPengumuman.
