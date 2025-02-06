@@ -26,6 +26,8 @@ c. Data mudah untuk diolah/disusun kembali sesuai kebutuhan
 
 a. **Buat Sheet dengan Nama Berikut:**
 ``` 
+        - Penyedia2025
+        - Swakelola
         - Tender
         - TenderNilai
         - TenderPengumuman
@@ -56,7 +58,7 @@ Untuk menyimpan dan menggunakan informasi sensitif dengan aman, atur GitHub Secr
 - `API_URL_SWA`: Tautan JSON dari RUP-PaketSwakelola-Terumumkan.
 - `API_URL_PS`: Tautan JSON dari SPSE-PencatatanSwakelola.
 - `API_URL_PNT`: Tautan JSON dari SPSE-PencatatanNonTender.
-- `API_URL_PEN`: Tautan JSON dari RUP-PaketPenyedia-Terumumkan.
+- `API_URL_PENLM`: Tautan JSON dari RUP-PaketPenyedia-Terumumkan.
 - `API_URL_NTS`: Tautan JSON dari SPSE-NonTenderSelesai.
 - `API_URL_EP`: Tautan JSON dari Ecat-PaketEPurchasing.
 
