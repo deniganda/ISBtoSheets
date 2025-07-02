@@ -102,7 +102,7 @@ jobs:
       run: node E-Purchasingv6.js
       env:
         GOOGLE_SHEET_KEY_JSON: ${{ secrets.GOOGLE_SHEET_KEY_JSON }}
-        API_URL_EP: ${{ secrets.API_URL_EP6 }}
+        API_URL_EP6: ${{ secrets.API_URL_EP6 }}
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
 
     - name: Run TokoDaring Node.js script
