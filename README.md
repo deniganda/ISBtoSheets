@@ -26,7 +26,7 @@ c. Data mudah untuk diolah/disusun kembali sesuai kebutuhan
 
 a. **Buat Sheet dengan Nama Berikut:**
 ``` 
-        - Penyedia2025
+        - Penyedia
         - Swakelola
         - Tender
         - TenderNilai
@@ -34,7 +34,8 @@ a. **Buat Sheet dengan Nama Berikut:**
         - NonTender
         - Pen NonTender
         - Pen Swakelola
-        - E-Purchasing
+        - E-Purchasing5
+        - E-Purchasing6
         - TokoDaring
 ```
 b. **Tambahkan Google Service Account sebagai Editor:**
@@ -58,7 +59,8 @@ Untuk menyimpan dan menggunakan informasi sensitif dengan aman, atur GitHub Secr
 - `API_URL_PNT`: Tautan JSON dari SPSE-PencatatanNonTender.
 - `API_URL_PENLM`: Tautan JSON dari RUP-PaketPenyedia-Terumumkan.
 - `API_URL_NTS`: Tautan JSON dari SPSE-NonTenderSelesai.
-- `API_URL_EP`: Tautan JSON dari Ecat-PaketEPurchasing.
+- `API_URL_EP5`: Tautan JSON dari Ecat-PaketEPurchasing.
+- `API_URL_EP6`: Tautan JSON dari Ecat-PaketEPurchasingV6.
 
 ### 4. Aktifkan GitHub Actions
 

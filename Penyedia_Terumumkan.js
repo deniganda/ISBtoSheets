@@ -16,8 +16,8 @@ const url = process.env.API_URL_PEN; // Use environment variable for URL
 
 // Define the spreadsheet ID and range
 const spreadsheetId = process.env.SPREADSHEET_ID; // Use environment variable for Spreadsheet ID
-const clearRange = 'Penyedia2026!A:ZZ'; // Range to clear
-const updateRange = 'Penyedia2026!A1'; // Range to update
+const clearRange = 'Penyedia!A:ZZ'; // Range to clear
+const updateRange = 'Penyedia!A1'; // Range to update
 
 async function fetchData() {
     try {
