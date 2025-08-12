@@ -64,9 +64,9 @@ Untuk menyimpan dan menggunakan informasi sensitif dengan aman, atur GitHub Secr
 - `API_URL_TSP`: Tautan JSON dari SPSE-TenderPengumuman.
 - `API_URL_TD`: Tautan JSON dari Bela-TokoDaringRealisasi.
 - `API_URL_SWA`: Tautan JSON dari RUP-PaketSwakelola-Terumumkan.
+- `API_URL_PEN`: Tautan JSON dari RUP-PaketPenyedia-Terumumkan.
 - `API_URL_PS`: Tautan JSON dari SPSE-PencatatanSwakelola.
 - `API_URL_PNT`: Tautan JSON dari SPSE-PencatatanNonTender.
-- `API_URL_PENLM`: Tautan JSON dari RUP-PaketPenyedia-Terumumkan.
 - `API_URL_NTS`: Tautan JSON dari SPSE-NonTenderSelesai.
 - `API_URL_EP5`: Tautan JSON dari Ecat-PaketEPurchasing.
 - `API_URL_EP6`: Tautan JSON dari Ecat-PaketEPurchasingV6.
