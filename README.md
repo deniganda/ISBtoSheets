@@ -1,15 +1,24 @@
 ![ISBtoSheets](https://github.com/deniganda/ISBtoSheets/blob/main/Guide/ISBtoSheets.png)
 
 # ISBtoSheets
-Impor data JSON ISB LKPP ke Google Sheets
- - Kegunaan
+ISBtoSheets adalah alat otomatisasi berbasis GitHub Actions yang mengambil data JSON dari Indonesian Spending Benchmark (ISB) LKPP dan langsung mengimpornya ke Google Sheets.
+Proyek ini dirancang untuk:
 ```
-a. Mempermudah proses rekap data
+   - Menghemat waktu dalam pengambilan data harian.
 
-b. Data terekap/tersimpan setiap hari nya dan dapat diakses kembali melalui history google sheets
+   - Menyimpan dan mengelola riwayat data secara rapi di Google Sheets.
 
-c. Data mudah untuk diolah/disusun kembali sesuai kebutuhan
+   - Memudahkan analisis dan pelaporan tanpa perlu memperbarui data mentah secara manual, sehingga rumus, olahan, dan rekap di Google Sheets selalu terbarui setiap hari.
 ```
+Fitur utama:
+```
+   - Terintegrasi dengan berbagai endpoint ISB LKPP (Tender, Non Tender, E-Purchasing, Toko Daring, dsb).
+
+   - Penjadwalan otomatis setiap hari pukul 06.00 WIB melalui GitHub Actions.
+
+   - Konfigurasi fleksibel lewat Google Sheets API dan GitHub Secrets.
+```
+Dengan ISBtoSheets, proses sinkronisasi data LKPP menjadi cepat, konsisten, dan siap diolah kapan saja.
 
 ## Persyaratan
 - [Akun Layanan Google](https://github.com/deniganda/ISBtoSheets/blob/main/Guide/Google%20Service%20Account.md) dengan Google Sheets API diaktifkan (file `credentials.json`).
