@@ -9,8 +9,7 @@
   "author": "deni",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.7.4",
-    "googleapis": "^140.0.1",
-    "node-telegram-bot-api": "^0.66.0"
+    "axios": "^1.11.0",
+    "googleapis": "^140.0.1"
   }
 }

@@ -35,13 +35,6 @@ jobs:
         API_URL_SWA: ${{ secrets.API_URL_SWA }}
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
 
-    - name: Run Instansi Satker Node.js script
-      run: node InstansiSatker.js
-      env:
-        GOOGLE_SHEET_KEY_JSON: ${{ secrets.GOOGLE_SHEET_KEY_JSON }}
-        API_URL_IS: ${{ secrets.API_URL_IS }}
-        SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-
     - name: Run Tender Selesai Node.js script
       run: node Tender_Selesai.js
       env:
