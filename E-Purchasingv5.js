@@ -16,8 +16,8 @@ const url = process.env.API_URL_EP; // Use environment variable for URL
 
 // Define the spreadsheet ID and range
 const spreadsheetId = process.env.SPREADSHEET_ID; // Use environment variable for Spreadsheet ID
-const clearRange = 'E-Purchasing!A:ZZ'; // Range to clear
-const updateRange = 'E-Purchasing!A1'; // Range to update
+const clearRange = 'E-Purchasing5!A:ZZ'; // Range to clear
+const updateRange = 'E-Purchasing5!A1'; // Range to update
 
 async function fetchData() {
     try {
