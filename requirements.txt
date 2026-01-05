@@ -1,0 +1,3 @@
+gspread
+google-auth
+requests
