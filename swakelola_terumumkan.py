@@ -19,6 +19,15 @@ SA_JSON = os.getenv("GOOGLE_SHEET_KEY_JSON")   # PATH ke file json ATAU JSON str
 SHEETS_ID = os.getenv("SPREADSHEET_ID")
 SHEETS_NAME = "Swakelola"
 
+print("[debug] GITHUB_ACTIONS:", os.getenv("GITHUB_ACTIONS"))
+print("[debug] TOKEN_API_ISB set:", "yes" if TOKEN else "no")
+print("[debug] TOKEN_API_ISB length:", len(TOKEN) if TOKEN else 0)
+print("[debug] TOKEN_API_ISB startswith 'Bearer ':", "yes" if (TOKEN or "").startswith("Bearer ") else "no")
+print("[debug] TOKEN_API_ISB prefix/suffix:",
+      (TOKEN[:4] + "..." + TOKEN[-4:]) if TOKEN and len(TOKEN) >= 8 else "n/a")
+print("[debug] GOOGLE_SHEET_KEY_JSON set:", "yes" if SA_JSON else "no")
+print("[debug] SPREADSHEET_ID set:", "yes" if SHEETS_ID else "no")
+
 if not TOKEN:
     raise RuntimeError("TOKEN_API_ISB tidak ditemukan di environment (GitHub Secrets)")
 if not SA_JSON:
