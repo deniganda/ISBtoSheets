@@ -31,7 +31,7 @@ if not SHEETS_NAME:
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Accept": "application/json",
-    "User-Agent": "inaproc-fetch/1.0",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
 }
 
 # =========================
