@@ -138,6 +138,7 @@ celerybeat.pid
 .env
 .envrc
 .venv
+isb-kantor
 env/
 venv/
 ENV/
