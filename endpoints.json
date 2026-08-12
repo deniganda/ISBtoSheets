@@ -1,0 +1,46 @@
+{
+  "_readme": "File ini yang diedit kalau mau nambah/ubah/hapus endpoint. Gak perlu sentuh tarik-data.py. defaults = parameter yang dikirim ke SEMUA endpoint. endpoints[].name = label di log (bebas), .sheet = nama tab Google Sheets tujuan, .url = alamat API endpoint.",
+
+  "defaults": {
+    "kode_klpd": "D270",
+    "tahun": 2026
+  },
+
+  "endpoints": [
+    {
+      "name": "Ekatalog Paket E-Purchasing",
+      "sheet": "E-Purchasing",
+      "url": "https://data.inaproc.id/api/v1/ekatalog/paket-e-purchasing"
+    },
+    {
+      "name": "RUP Paket Penyedia Terumumkan",
+      "sheet": "Penyedia",
+      "url": "https://data.inaproc.id/api/v1/rup/paket-penyedia-terumumkan"
+    },
+    {
+      "name": "RUP Paket Swakelola Terumumkan",
+      "sheet": "Swakelola",
+      "url": "https://data.inaproc.id/api/v1/rup/paket-swakelola-terumumkan"
+    },
+    {
+      "name": "Tender Non-Tender Selesai",
+      "sheet": "NonTender",
+      "url": "https://data.inaproc.id/api/v1/tender/non-tender-selesai"
+    },
+    {
+      "name": "Tender Pencatatan Non-Tender",
+      "sheet": "Pen NonTender",
+      "url": "https://data.inaproc.id/api/v1/tender/pencatatan-non-tender"
+    },
+    {
+      "name": "Tender Pencatatan Swakelola",
+      "sheet": "Pen Swakelola",
+      "url": "https://data.inaproc.id/api/v1/tender/pencatatan-swakelola"
+    },
+    {
+      "name": "Tender Selesai Nilai",
+      "sheet": "TenderNilai",
+      "url": "https://data.inaproc.id/api/v1/tender/tender-selesai-nilai"
+    }
+  ]
+}
