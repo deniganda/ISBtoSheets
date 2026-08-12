@@ -209,7 +209,6 @@ __marimo__/
 
 # Private / sensitive data - jangan pernah di-commit
 credentials.json
-endpoints.json
 *.key
 *.pem
 secrets/
