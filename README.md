@@ -1,4 +1,4 @@
-![ISBtoSheets](https://github.com/deniganda/ISBtoSheets/blob/main/Guide/ISBtoSheets.png)
+![ISBtoSheets](https://github.com/deniganda/ISBtoSheets/blob/main/guide/ISBtoSheets.png)
 
 # ISBtoSheets
 Script ini digunakan untuk menarik data dari beberapa endpoint API `data.inaproc.id`, yang kemudian secara otomatis dituliskan ke masing-masing tab pada Google Sheets.
