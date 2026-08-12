@@ -1,340 +1,218 @@
-import os
 import json
+import os
 import random
 import time
 from pathlib import Path
 
 import requests
 import gspread
+from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
 # =========================
-# LOAD ENV (supports .env locally + GitHub Actions env)
+# CONFIG
 # =========================
-env_path = Path(__file__).resolve().parent / ".env"
-if env_path.exists():
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        raise RuntimeError("python-dotenv is required to load .env locally")
-    load_dotenv(env_path)
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 
-TOKEN = os.getenv("TOKEN_API_ISB")
-SA_JSON = os.getenv("GOOGLE_SHEET_KEY_JSON")   # PATH ke file json ATAU JSON string
-SHEETS_ID = os.getenv("SPREADSHEET_ID")
+CRED_PATH = BASE_DIR / "credentials.json"
+if not CRED_PATH.exists():
+    raise RuntimeError(f"credentials.json tidak ditemukan di {CRED_PATH}")
 
-if not TOKEN:
-    raise RuntimeError("TOKEN_API_ISB tidak ditemukan di environment atau .env")
-if not SA_JSON:
-    raise RuntimeError("GOOGLE_SHEET_KEY_JSON tidak ditemukan di environment atau .env")
-if not SHEETS_ID:
-    raise RuntimeError("SPREADSHEET_ID tidak ditemukan di environment atau .env")
+ENDPOINTS_CONFIG_PATH = BASE_DIR / "endpoints.json"
+if not ENDPOINTS_CONFIG_PATH.exists():
+    raise RuntimeError(f"endpoints.json tidak ditemukan di {ENDPOINTS_CONFIG_PATH}")
 
+
+def env(name, err):
+    val = os.getenv(name)
+    if not val:
+        raise RuntimeError(err)
+    return val
+
+
+TOKEN = env("TOKEN_API_ISB", "TOKEN_API_ISB tidak ditemukan di .env")
+SHEETS_ID = env("SPREADSHEET_ID", "SPREADSHEET_ID tidak ditemukan di .env")
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+
+# =========================
+# LOAD ENDPOINT CONFIG (dari endpoints.yaml)
+# =========================
+def load_endpoints_config(path):
+    with open(path, "r", encoding="utf-8") as f:
+        cfg = json.load(f) or {}
+
+    defaults = cfg.get("defaults") or {}
+    endpoints = cfg.get("endpoints") or []
+
+    if not endpoints:
+        raise RuntimeError(f"Tidak ada endpoint yang terdaftar di {path}")
+
+    required_fields = ("name", "sheet", "url")
+    for i, ep in enumerate(endpoints, start=1):
+        missing = [f for f in required_fields if not ep.get(f)]
+        if missing:
+            raise RuntimeError(
+                f"Endpoint #{i} di {path} kurang field: {', '.join(missing)}"
+            )
+        ep["params"] = dict(defaults)
+
+    return endpoints
+
+
+DEFAULTS_INFO = None  # hanya buat referensi, defaults sudah dipakai di load_endpoints_config
+ENDPOINTS = load_endpoints_config(ENDPOINTS_CONFIG_PATH)
+
+# =========================
+# HTTP & GOOGLE SHEETS
+# =========================
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Accept": "application/json",
     "User-Agent": "inaproc-fetch/1.0",
 }
 
-# =========================
-# GOOGLE SHEETS SETUP
-# =========================
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-sa_path = Path(SA_JSON)
-if sa_path.exists():
-    creds = Credentials.from_service_account_file(str(sa_path), scopes=SCOPES)
-else:
-    # kalau SA_JSON adalah JSON string
-    creds = Credentials.from_service_account_info(json.loads(SA_JSON), scopes=SCOPES)
+def make_session():
+    s = requests.Session()
+    s.headers.update(HEADERS)
+    return s
 
-gc = gspread.authorize(creds)
-sh = gc.open_by_key(SHEETS_ID)
 
-# =========================
-# ENDPOINT CONFIG (placeholder params/sheet names)
-# =========================
-LIMIT_MIN = 50
-LIMIT_MAX = 100
-CURSOR_RETRY_ATTEMPTS = 5
-CURSOR_RETRY_DELAY_SEC = 4
+def ensure_sheets(sh, titles):
+    """Cek 1x semua worksheet yg ada, auto-create yg belum ada.
+    Dipanggil sekali di awal biar get_sheet() gak perlu try/except lagi."""
+    existing = {ws.title for ws in sh.worksheets()}
+    missing = [t for t in titles if t not in existing]
+    for title in missing:
+        sh.add_worksheet(title=title, rows=1000, cols=30)
+        print(f"➕ Sheet '{title}' belum ada, dibuat baru")
+    if not missing:
+        print("✅ Semua sheet sudah ada")
 
-DEFAULTS = {
-    "kode_klpd": "D270",
-    "tahun": 2026,
-    "limit": 70,
-    "kodePenyedia": "KODE_PENYEDIA",
-    "kodeTender": "KODE_TENDER",
-}
 
-ENDPOINTS = [
-    {
-        "name": "Endpoint 01 - ekatalog paket e-purchasing",
-        "sheet": "E-Purchasing6",
-        "url": "https://data.inaproc.id/api/v1/ekatalog/paket-e-purchasing",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    # {
-    #     "name": "Endpoint 02 - ekatalog penyedia detail",
-    #     "sheet": "SHEET_ENDPOINT_02",
-    #     "url": "https://data.inaproc.id/api/v1/ekatalog/penyedia-detail",
-    #     "params": {"kodePenyedia": DEFAULTS["kodePenyedia"]},
-    #     "use_cursor": False,
-    # },
-    # {
-    #     "name": "Endpoint 03 - rup master satker",
-    #     "sheet": "SHEET_ENDPOINT_03",
-    #     "url": "https://data.inaproc.id/api/v1/rup/master-satker",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 04 - rup paket anggaran penyedia",
-    #     "sheet": "SHEET_ENDPOINT_04",
-    #     "url": "https://data.inaproc.id/api/v1/rup/paket-anggaran-penyedia",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 05 - rup paket anggaran swakelola",
-    #     "sheet": "SHEET_ENDPOINT_05",
-    #     "url": "https://data.inaproc.id/api/v1/rup/paket-anggaran-swakelola",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    {
-        "name": "Endpoint 06 - rup paket penyedia terumumkan",
-        "sheet": "Penyedia",
-        "url": "https://data.inaproc.id/api/v1/rup/paket-penyedia-terumumkan",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    {
-        "name": "Endpoint 07 - rup paket swakelola terumumkan",
-        "sheet": "Swakelola",
-        "url": "https://data.inaproc.id/api/v1/rup/paket-swakelola-terumumkan",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    # {
-    #     "name": "Endpoint 08 - rup program master",
-    #     "sheet": "SHEET_ENDPOINT_08",
-    #     "url": "https://data.inaproc.id/api/v1/rup/program-master",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 09 - tender jadwal tahapan non tender",
-    #     "sheet": "SHEET_ENDPOINT_09",
-    #     "url": "https://data.inaproc.id/api/v1/tender/jadwal-tahapan-non-tender",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 10 - tender jadwal tahapan tender",
-    #     "sheet": "SHEET_ENDPOINT_10",
-    #     "url": "https://data.inaproc.id/api/v1/tender/jadwal-tahapan-tender",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 11 - tender non tender ekontrak kontrak",
-    #     "sheet": "SHEET_ENDPOINT_11",
-    #     "url": "https://data.inaproc.id/api/v1/tender/non-tender-ekontrak-kontrak",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 12 - tender non tender pengumuman",
-    #     "sheet": "SHEET_ENDPOINT_12",
-    #     "url": "https://data.inaproc.id/api/v1/tender/non-tender-pengumuman",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    {
-        "name": "Endpoint 13 - tender non tender selesai",
-        "sheet": "NonTender",
-        "url": "https://data.inaproc.id/api/v1/tender/non-tender-selesai",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    {
-        "name": "Endpoint 14 - tender pencatatan non tender",
-        "sheet": "Pen NonTender",
-        "url": "https://data.inaproc.id/api/v1/tender/pencatatan-non-tender",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    # {
-    #     "name": "Endpoint 15 - tender pencatatan non tender realisasi",
-    #     "sheet": "SHEET_ENDPOINT_15",
-    #     "url": "https://data.inaproc.id/api/v1/tender/pencatatan-non-tender-realisasi",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    {
-        "name": "Endpoint 16 - tender pencatatan swakelola",
-        "sheet": "Pen Swakelola",
-        "url": "https://data.inaproc.id/api/v1/tender/pencatatan-swakelola",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    # {
-    #     "name": "Endpoint 17 - tender pencatatan swakelola realisasi",
-    #     "sheet": "SHEET_ENDPOINT_17",
-    #     "url": "https://data.inaproc.id/api/v1/tender/pencatatan-swakelola-realisasi",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 18 - tender pengumuman",
-    #     "sheet": "TenderPengumuman",
-    #     "url": "https://data.inaproc.id/api/v1/tender/pengumuman",
-    #     "params": {
-    #         "kodeTender": DEFAULTS["kodeTender"],
-    #         "kode_klpd": DEFAULTS["kode_klpd"],
-    #         "tahun": DEFAULTS["tahun"],
-    #         "limit": DEFAULTS["limit"],
-    #     },
-    #     "use_cursor": True,
-    # },
-    # {
-    #     "name": "Endpoint 19 - tender peserta tender",
-    #     "sheet": "SHEET_ENDPOINT_19",
-    #     "url": "https://data.inaproc.id/api/v1/tender/peserta-tender",
-    #     "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-    #     "use_cursor": True,
-    # },
-    {
-        "name": "Endpoint 20 - tender ekontrak kontrak",
-        "sheet": "Tender",
-        "url": "https://data.inaproc.id/api/v1/tender/tender-ekontrak-kontrak",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-    {
-        "name": "Endpoint 21 - tender selesai nilai",
-        "sheet": "TenderNilai",
-        "url": "https://data.inaproc.id/api/v1/tender/tender-selesai-nilai",
-        "params": {"kode_klpd": DEFAULTS["kode_klpd"], "tahun": DEFAULTS["tahun"], "limit": DEFAULTS["limit"]},
-        "use_cursor": True,
-    },
-]
-
-# =========================
-# HELPERS
-# =========================
-def fetch_page(url, params, cursor, max_retries=3, base_delay=1.0):
-    p = dict(params)
-    if cursor:
-        p["cursor"] = cursor
-    last_err = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            r = requests.get(url, headers=HEADERS, params=p, timeout=60)
-            print("HTTP:", r.status_code, "| cursor:", cursor, "| attempt:", attempt)
-            print("URL:", r.url)
-            if r.status_code >= 400:
-                print("Response snippet:", r.text[:1000])
-            r.raise_for_status()
-            return r.json()
-        except requests.RequestException as exc:
-            last_err = exc
-            if attempt == max_retries:
-                break
-            time.sleep(base_delay * attempt)
-    raise last_err
-
-def append_items(ws, header_keys, items):
-    if not items:
-        return header_keys, 0
-    if header_keys is None:
-        header_keys = list(items[0].keys())
-        ws.append_row(header_keys, value_input_option="RAW")
-    rows = [[it.get(k, "") for k in header_keys] for it in items]
-    if rows:
-        ws.append_rows(rows, value_input_option="RAW")
-    return header_keys, len(rows)
-
-def get_sheet(title):
-    try:
-        ws = sh.worksheet(title)
-    except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(title=title, rows=1000, cols=30)
+def get_sheet(sh, title):
+    ws = sh.worksheet(title)
     ws.clear()
     return ws
 
+
 # =========================
-# MAIN LOOP
+# FETCH
 # =========================
-for ep in ENDPOINTS:
-    print(f"\n== {ep['name']} -> {ep['sheet']} ==")
-    ws = get_sheet(ep["sheet"])
+def fetch_page(session, url, params, cursor, max_retries=3, base_delay=1.0):
+    p = dict(params)
+    if cursor:
+        p["cursor"] = cursor
 
-    total = 0
-    header_keys = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            # timeout = (connect, read). Connect pendek supaya cepat gagal & retry.
+            r = session.get(url, params=p, timeout=(10, 90))
+            print(f"HTTP: {r.status_code} | cursor: {cursor} | attempt: {attempt}")
+            if r.status_code >= 400:
+                print(f"Response snippet: {r.text[:500]}")
+            r.raise_for_status()
+            return r.json()
+        except requests.RequestException as exc:
+            print(f"⚠️ request error (attempt {attempt}/{max_retries}): {exc}")
+            if attempt == max_retries:
+                raise
+            time.sleep(base_delay * attempt)
 
-    if not ep["use_cursor"]:
-        j = fetch_page(ep["url"], ep["params"], None)
-        items = j.get("data") or []
-        if not isinstance(items, list):
-            items = []
-        header_keys, added = append_items(ws, header_keys, items)
-        total += added
-        print(f"✅ appended {added} rows (total {total})")
-        print(f"✅ Done {ep['name']}. Total rows: {total}")
-        continue
 
+def fetch_all_items(session, ep):
+    """Ambil semua halaman via cursor pagination, kumpulkan di memory
+    (Sheets API cuma dipanggil sekali di akhir, bukan per-halaman).
+
+    Limit per-request diacak 900-999 dan cursor di-retry sampai 3x (delay 4s)
+    karena API kadang balikin response sukses tapi meta.cursor-nya belum ada."""
+    all_items = []
     cursor = None
     last_json = None
-    limit_used = None
-    params_for_cursor = None
+    params = None
 
-    for attempt in range(1, CURSOR_RETRY_ATTEMPTS + 1):
-        limit_used = random.randint(LIMIT_MIN, LIMIT_MAX)
-        params_for_cursor = dict(ep["params"])
-        params_for_cursor["limit"] = limit_used
-        last_json = fetch_page(ep["url"], params_for_cursor, None)
-        meta = last_json.get("meta") or {}
-        cursor = meta.get("cursor")
+    for attempt in range(1, 3 + 1):
+        params = {**ep["params"], "limit": random.randint(900, 999)}
+        last_json = fetch_page(session, ep["url"], params, None)
+        cursor = (last_json.get("meta") or {}).get("cursor")
         if cursor:
-            print(f"✅ cursor found (attempt {attempt}, limit {limit_used})")
+            print(f"✅ [{ep['name']}] cursor found (attempt {attempt}, limit {params['limit']})")
             break
-        if attempt < CURSOR_RETRY_ATTEMPTS:
-            print(f"⚠️ no cursor, retrying (attempt {attempt}/{CURSOR_RETRY_ATTEMPTS})")
-            time.sleep(CURSOR_RETRY_DELAY_SEC)
+        if attempt < 3:
+            print(f"⚠️ [{ep['name']}] no cursor, retrying ({attempt}/3)")
+            time.sleep(4)
 
-    items = (last_json.get("data") if last_json else []) or []
-    if not isinstance(items, list):
-        items = []
-    header_keys, added = append_items(ws, header_keys, items)
-    total += added
-    print(f"✅ appended {added} rows (total {total})")
+    items = last_json.get("data") or []
+    all_items.extend(items)
+    print(f"✅ [{ep['name']}] page 1: {len(items)} rows (total {len(all_items)})")
 
     if not cursor:
-        print(f"⚠️ no cursor after {CURSOR_RETRY_ATTEMPTS} attempts, stopping pagination")
-        print(f"✅ Done {ep['name']}. Total rows: {total}")
-        continue
+        print(f"⚠️ [{ep['name']}] no cursor after 3 attempts, stopping pagination")
+        return all_items
 
     while True:
-        j = fetch_page(ep["url"], params_for_cursor, cursor)
+        j = fetch_page(session, ep["url"], params, cursor)
         items = j.get("data") or []
-        if not isinstance(items, list):
-            items = []
         if not items:
             break
-
-        header_keys, added = append_items(ws, header_keys, items)
-        total += added
-        print(f"✅ appended {added} rows (total {total})")
-
+        all_items.extend(items)
+        print(f"✅ [{ep['name']}] +{len(items)} rows (total {len(all_items)})")
         meta = j.get("meta") or {}
-        has_more = meta.get("has_more")
-        next_cursor = meta.get("cursor")
-        if has_more is True and next_cursor:
-            cursor = next_cursor
+        if meta.get("has_more") and meta.get("cursor"):
+            cursor = meta["cursor"]
         else:
             break
 
-    print(f"✅ Done {ep['name']}. Total rows: {total}")
+    return all_items
+
+
+def write_all_to_sheet(sh, sheet_title, all_items):
+    """Tulis semua data sekaligus (1 API call), lebih cepat daripada append per-halaman."""
+    ws = get_sheet(sh, sheet_title)
+    if not all_items:
+        return 0
+    keys = list(all_items[0].keys())
+    rows = [keys]
+    for it in all_items:
+        rows.append([it.get(k, "") for k in keys])
+    ws.update(rows, value_input_option="RAW")
+    return len(all_items)
+
+
+# =========================
+# MAIN
+# =========================
+def main():
+    start = time.time()
+    print(f"🔄 Mulai tarik data | {len(ENDPOINTS)} endpoint | sekuensial")
+
+    creds = Credentials.from_service_account_file(str(CRED_PATH), scopes=SCOPES)
+    sh = gspread.authorize(creds).open_by_key(SHEETS_ID)
+    ensure_sheets(sh, [ep["sheet"] for ep in ENDPOINTS])
+    session = make_session()
+
+    total_rows = 0
+    errors = []
+
+    for ep in ENDPOINTS:
+        print(f"\n== {ep['name']} -> {ep['sheet']} ==")
+        try:
+            items = fetch_all_items(session, ep)
+            total = write_all_to_sheet(sh, ep["sheet"], items)
+            print(f"✅ Done {ep['name']}. Total rows: {total}")
+            total_rows += total
+        except Exception as e:
+            print(f"❌ Error di {ep['name']}: {e}")
+            errors.append(ep["name"])
+
+    session.close()
+    print(f"\n✅ Selesai dalam {time.time() - start:.1f}s | Total baris: {total_rows}")
+    if errors:
+        print(f"⚠️ Error di: {', '.join(errors)}")
+
+
+if __name__ == "__main__":
+    main()

@@ -206,3 +206,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Private / sensitive data - jangan pernah di-commit
+credentials.json
+endpoints.json
+*.key
+*.pem
+secrets/
+secrets.json
+config.local.*
+*.local.env
